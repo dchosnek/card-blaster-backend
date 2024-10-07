@@ -2,4 +2,4 @@
 
 Perform the oauth process with Cisco Webex for using a Node server running on localhost.
 
-**This code currently stores the resulting user token in a client-side session cookie. That should be moved to either Redis or Mongo for better security.**
+This code stores the resulting user token in a server-side session record in MongoDB. The session has a TTL and will be automatically deleted by MongoDB once the expiration has been reached.
