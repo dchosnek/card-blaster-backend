@@ -15,6 +15,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 const STATE_STRING = process.env.STATE_STRING;
 const COOKIE_SECRET = process.env.COOKIE_SECRET;
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 // define MongoDB connection URL and database name
 const mongoUrl = 'mongodb://localhost:27017';
@@ -44,15 +45,7 @@ MongoClient.connect(mongoUrl)
       })
     );
 
-    // 1. Home route with a "Log in with Webex" link
-    app.get('/', (req, res) => {
-      res.send(`
-    <h1>Cisco Webex OAuth Demo</h1>
-    <a href="/login">Log in with Webex</a>
-  `);
-    });
-
-    // 2. Login route to redirect user to Webex's OAuth2 page
+    // ENDPOINT (redirect): Display Webex Oauth page
     app.get('/login', (req, res) => {
       const scopes = 'spark:messages_write spark:people_read spark:rooms_read';
       const authUrl = `https://webexapis.com/v1/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=${encodeURIComponent(scopes)}&state=${STATE_STRING}`;
@@ -60,7 +53,7 @@ MongoClient.connect(mongoUrl)
       res.redirect(authUrl);
     });
 
-    // 3. oauth2 callback route to handle Webex's response
+    // ENDPOINT (redirect): Callback to this API to convert Webex auth code to user token
     app.get('/callback', async (req, res) => {
       const { code } = req.query;
       const { state } = req.query;
@@ -72,6 +65,7 @@ MongoClient.connect(mongoUrl)
 
       if (state !== STATE_STRING) {
         console.error('State string has been tampered with.');
+        return res.send('State string has been tampered with. Something went wrong with the OAuth flow.');
       }
 
       try {
@@ -93,48 +87,54 @@ MongoClient.connect(mongoUrl)
 
         // save the access token in the session
         req.session.access_token = tokenResponse.data.access_token;
-        res.redirect('/profile'); // redirect to the profile page
+
+        // Make a request to Webex API to get the user profile
+        const profileResponse = await axios.get('https://webexapis.com/v1/people/me', {
+          headers: {
+            Authorization: `Bearer ${tokenResponse.data.access_token}`,
+          },
+        });
+
+        // save the login event to the database in a non-blocking manner
+        activityCollection.insertOne({
+          email: profileResponse.data.emails[0],
+          activity: 'login',
+          timestamp: new Date()
+        }).then(() => { });
+
+        // save some user data into the session
+        req.session.nickName = profileResponse.data.nickName;
+        req.session.avatar = profileResponse.data.avatar;
+        req.session.email = profileResponse.data.emails[0];
+
+        return res.redirect('http://localhost:4000')
+
       } catch (error) {
         console.error('Error exchanging code for access token:', error.response ? error.response.data : error.message);
         res.send('An error occurred during the OAuth process. Check the console for details.');
       }
     });
 
-    // 4. Profile route to get the user's profile from Webex
-    app.get('/profile', async (req, res) => {
-      const accessToken = req.session.access_token;
+    // ENDPOINT (API): Get user status (isAuthenticated, avatar, nickName)
+    app.get('/status', async (req, res) => {
 
-      if (!accessToken) {
-        return res.redirect('/'); // If no token, redirect to home
-      }
+      let responseBody;
 
-      try {
-        // Make a request to Webex API to get the user profile
-        const profileResponse = await axios.get('https://webexapis.com/v1/people/me', {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        });
-
-        // Display the user profile
-        const userProfile = profileResponse.data;
-
-        req.session.email = userProfile.emails[0];
-        activityCollection.insertOne({
-          email: userProfile.emails[0],
-          activity: 'login',
-          timestamp: new Date()
-        }).then(() => { });
-
-        res.send(`
-      <h1>Welcome, ${userProfile.displayName}</h1>
-      <p>Email: ${userProfile.emails[0]}</p>
-      <img src="${userProfile.avatar}" width="200">
-      <p><a href="/logout">Logout</a></p>
-    `);
-      } catch (error) {
-        console.error('Error fetching user profile:', error);
-        res.send('Error fetching user profile.');
+      // if the session is missing any data, return an empty data structure
+      if (!req.session || !req.session.access_token || !req.session.avatar || !req.session.nickName) {
+        responseBody = {
+          avatarUrl: '',
+          isAuthenticated: false,
+          nickName: ''
+        }
+        return res.status(200).json(responseBody);
+      } else {
+        responseBody = {
+          avatarUrl: req.session.avatar,
+          isAuthenticated: true,
+          nickName: req.session.nickName
+        }
+        return res.status(200).json(responseBody);
       }
     });
 
@@ -170,7 +170,7 @@ MongoClient.connect(mongoUrl)
       }
     });
 
-    // 5. Logout route to clear the session
+    // ENDPOINT (redirect): Logout of the application
     app.get('/logout', (req, res) => {
       // Check if the session exists
       if (req.session) {
@@ -190,12 +190,31 @@ MongoClient.connect(mongoUrl)
           }
 
           // Clear the cookie in the response to fully log out the user
-          res.clearCookie('connect.sid'); // Replace 'connect.sid' if your session cookie has a custom name
+          res.clearCookie('connect.sid');
 
-          res.send('Logged out successfully.'); // Send a confirmation response
+          res.redirect(`${frontendUrl}/`);
         });
       } else {
         res.status(400).send('No session to log out.'); // Handle cases where there is no session
+      }
+    });
+
+    // ENDPOINT (API): Get history of user activity
+    app.get('/history', async (req, res) => {
+      try {
+        const email = req.session.email;
+        const query = { email: email };
+        const options = {
+          projection: { _id: 0, activity: 1, timestamp: 1, target: 1 },
+          sort: { timestamp: -1 },
+          limit: 50
+        };
+        const records = await activityCollection.find(query, options).toArray();
+        return res.status(200).json(records);
+
+      } catch (error) {
+        console.error('Failure querying the database:', error);
+        return res.status(200).json([]);
       }
     });
 
@@ -205,6 +224,6 @@ MongoClient.connect(mongoUrl)
 
   })
   .catch((err) => {
-    console.error('Failed to connect to MondoDB: ', err);
+    console.error('Failed to connect to MongoDB: ', err);
     process.exit(1);
   });
