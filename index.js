@@ -158,18 +158,12 @@ MongoClient.connect(mongoUrl)
         });
 
         const rooms = roomsResponse.data.items;
+        const filteredRooms = rooms.map(({ id, title, type }) => ({ id, title, type }));
 
-        // Format the room information for display
-        let roomsHtml = '<h1>User\'s Webex Spaces</h1><ul><p><a href="/logout">Logout</a></p>';
-        rooms.forEach(room => {
-          roomsHtml += `<li><strong>${room.title}</strong> (Type: ${room.type}, id: ${room.id})</li>`;
-        });
-        roomsHtml += '</ul>';
-
-        res.send(roomsHtml);
+        return res.status(200).json(filteredRooms);
       } catch (error) {
         console.error('Error fetching rooms:', error.response ? error.response.data : error.message);
-        res.send('An error occurred while fetching rooms. Check the console for details.');
+        return res.status(200).json([])
       }
     });
 
@@ -259,7 +253,7 @@ MongoClient.connect(mongoUrl)
         const options = {
           projection: { _id: 0, activity: 1, timestamp: 1, success: 1 },
           sort: { timestamp: -1 },
-          limit: 50
+          limit: 25
         };
         const records = await activityCollection.find(query, options).toArray();
         return res.status(200).json(records);
