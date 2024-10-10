@@ -1,5 +1,3 @@
-# Webex Oauth on localhost
+# CardRocket for Webex backend
 
-Perform the oauth process with Cisco Webex for using a Node server running on localhost.
-
-This code stores the resulting user token in a server-side session record in MongoDB. The session has a TTL and will be automatically deleted by MongoDB once the expiration has been reached.
+Node/Express + Mongo stack for performing oauth with Webex and sending a card on a user's behalf. This is just the backend API. The frontend is another repository.
