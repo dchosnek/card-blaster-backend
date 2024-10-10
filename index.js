@@ -45,6 +45,9 @@ MongoClient.connect(mongoUrl)
       })
     );
 
+    // this will help read the body of incoming requests
+    app.use(express.json());
+
     // ENDPOINT (redirect): Display Webex Oauth page
     app.get('/login', (req, res) => {
       const scopes = 'spark:messages_write spark:people_read spark:rooms_read';
@@ -199,13 +202,62 @@ MongoClient.connect(mongoUrl)
       }
     });
 
+    // ENDPOINT (API): Send a card to the requested roomId
+    app.post('/sendcard', async (req, res) => {
+      const { roomId, card } = req.body;
+      const accessToken = req.session.access_token;
+      console.log(card);
+      try {
+        const data = JSON.stringify({
+          roomId: roomId,
+          markdown: "Card could not render",
+          attachments: [
+            {
+              contentType: "application/vnd.microsoft.card.adaptive",
+              content: card
+            }
+          ]
+        });
+        const config = {
+          method: 'post',
+          maxBodyLength: Infinity,
+          url: 'https://webexapis.com/v1/messages',
+          headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`
+          },
+          data: data
+        };
+        const response = await axios.request(config);
+
+        // log the successful card send
+        activityCollection.insertOne({
+          email: req.session.email,
+          activity: 'send card (success)',
+          timestamp: new Date()
+        }).then(() => { });
+
+        return res.status(200).json(response.data);
+      } catch (error) {
+
+        // log the failed card send
+        activityCollection.insertOne({
+          email: req.session.email,
+          activity: 'send card (failure)',
+          timestamp: new Date()
+        }).then(() => { });
+
+        return res.status(500).json({ error: error.message });
+      }
+    });
+
     // ENDPOINT (API): Get history of user activity
     app.get('/history', async (req, res) => {
       try {
         const email = req.session.email;
         const query = { email: email };
         const options = {
-          projection: { _id: 0, activity: 1, timestamp: 1, target: 1 },
+          projection: { _id: 0, activity: 1, timestamp: 1, success: 1 },
           sort: { timestamp: -1 },
           limit: 50
         };
