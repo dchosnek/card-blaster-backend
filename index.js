@@ -45,8 +45,16 @@ MongoClient.connect(mongoUrl)
       })
     );
 
+    // ========================================================================
+    // Middleware
+    // ------------------------------------------------------------------------
+    
     // this will help read the body of incoming requests
     app.use(express.json());
+    
+    // ========================================================================
+    // Oauth
+    // ------------------------------------------------------------------------
 
     // ENDPOINT (redirect): Display Webex Oauth page
     app.get('/login', (req, res) => {
@@ -118,6 +126,39 @@ MongoClient.connect(mongoUrl)
       }
     });
 
+    // ENDPOINT (redirect): Logout of the application
+    app.get('/logout', (req, res) => {
+      // Check if the session exists
+      if (req.session) {
+
+        // log the logout event
+        activityCollection.insertOne({
+          email: req.session.email,
+          activity: 'logout',
+          timestamp: new Date()
+        }).then(() => { });
+
+        // Destroy the session in the MongoDB store
+        req.session.destroy((err) => {
+          if (err) {
+            console.error('Failed to destroy session:', err);
+            return res.status(500).send('Failed to log out. Please try again.');
+          }
+
+          // Clear the cookie in the response to fully log out the user
+          res.clearCookie('connect.sid');
+
+          res.redirect(`${frontendUrl}/`);
+        });
+      } else {
+        res.status(400).send('No session to log out.'); // Handle cases where there is no session
+      }
+    });
+
+    // ========================================================================
+    // API
+    // ------------------------------------------------------------------------
+
     // ENDPOINT (API): Get user status (isAuthenticated, avatar, nickName)
     app.get('/status', async (req, res) => {
 
@@ -151,7 +192,8 @@ MongoClient.connect(mongoUrl)
 
       try {
         // Make a GET request to Webex to retrieve all rooms
-        const roomsResponse = await axios.get('https://webexapis.com/v1/rooms', {
+        const roomsResponse = await axios.get(
+          'https://webexapis.com/v1/rooms?max=500&sortBy=lastactivity', {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
@@ -167,40 +209,10 @@ MongoClient.connect(mongoUrl)
       }
     });
 
-    // ENDPOINT (redirect): Logout of the application
-    app.get('/logout', (req, res) => {
-      // Check if the session exists
-      if (req.session) {
-
-        // log the logout event
-        activityCollection.insertOne({
-          email: req.session.email,
-          activity: 'logout',
-          timestamp: new Date()
-        }).then(() => { });
-
-        // Destroy the session in the MongoDB store
-        req.session.destroy((err) => {
-          if (err) {
-            console.error('Failed to destroy session:', err);
-            return res.status(500).send('Failed to log out. Please try again.');
-          }
-
-          // Clear the cookie in the response to fully log out the user
-          res.clearCookie('connect.sid');
-
-          res.redirect(`${frontendUrl}/`);
-        });
-      } else {
-        res.status(400).send('No session to log out.'); // Handle cases where there is no session
-      }
-    });
-
     // ENDPOINT (API): Send a card to the requested roomId
     app.post('/sendcard', async (req, res) => {
-      const { roomId, card } = req.body;
+      const { roomId, card, type } = req.body;
       const accessToken = req.session.access_token;
-      console.log(card);
       try {
         const data = JSON.stringify({
           roomId: roomId,
@@ -227,17 +239,21 @@ MongoClient.connect(mongoUrl)
         // log the successful card send
         activityCollection.insertOne({
           email: req.session.email,
-          activity: 'send card (success)',
+          activity: 'send card',
+          success: true,
+          type: type,
           timestamp: new Date()
         }).then(() => { });
 
         return res.status(200).json(response.data);
       } catch (error) {
 
-        // log the failed card send
+        // log the successful card send
         activityCollection.insertOne({
           email: req.session.email,
-          activity: 'send card (failure)',
+          activity: 'send card',
+          success: false,
+          type: type,
           timestamp: new Date()
         }).then(() => { });
 
@@ -251,7 +267,7 @@ MongoClient.connect(mongoUrl)
         const email = req.session.email;
         const query = { email: email };
         const options = {
-          projection: { _id: 0, activity: 1, timestamp: 1, success: 1 },
+          projection: { _id: 0, activity: 1, timestamp: 1, success: 1, type: 1 },
           sort: { timestamp: -1 },
           limit: 25
         };
