@@ -31,7 +31,7 @@ router.get('/history', async (req, res) => {
         const email = req.session.email;
         const query = { email: email };
         const options = {
-            projection: { _id: 0, activity: 1, timestamp: 1, success: 1, type: 1 },
+            projection: { _id: 0, email: 0 },   // return all but email and _id
             sort: { timestamp: -1 },
             limit: 25
         };
