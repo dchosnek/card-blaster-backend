@@ -10,6 +10,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 const STATE_STRING = process.env.STATE_STRING;
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+const approvedDomains = process.env.APPROVED_DOMAINS.split(',');
 
 // ENDPOINT (redirect): Display Webex Oauth page
 router.get('/login', (req, res) => {
@@ -62,6 +63,11 @@ router.get('/callback', async (req, res) => {
 
         const email = profileResponse.data.emails[0]
         logger.info(`${email} retrieved profile info from Webex successfully`);
+
+        // confirm this user belongs to an approved domain
+        if (!approvedDomains.some(domain => email.endsWith(domain))) {
+            throw new Error(`${email} is not part of an approved domain for this app`);
+        }
 
         // save the login event to the database in a non-blocking manner
         req.db.insertOne({
