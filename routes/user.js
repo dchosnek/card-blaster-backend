@@ -52,6 +52,7 @@ router.get('/history', async (req, res) => {
 // Route to display all rooms the user is connected to
 router.get('/rooms', async (req, res) => {
     const accessToken = req.session.access_token;
+    const email = req.session?.email ?? "user";
 
     if (!accessToken) {
         return res.redirect('/'); // If no token, redirect to home/login
@@ -68,11 +69,11 @@ router.get('/rooms', async (req, res) => {
 
         const rooms = roomsResponse.data?.items ?? [];
         const filteredRooms = rooms.map(({ id, title, type }) => ({ id, title, type }));
-
+        logger.info(`${email} retrieved list of ${rooms.length} rooms`);
         return res.status(200).json(filteredRooms);
     } catch (error) {
         const errorMessage = error.response ? JSON.stringify(error.response.data) : error.message;
-        logger.error(`failed to get list of rooms: ${errorMessage}`);
+        logger.error(`${email} failed to get list of rooms: ${errorMessage}`);
         return res.status(200).json([])
     }
 });
