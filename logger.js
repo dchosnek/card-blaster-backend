@@ -1,5 +1,6 @@
 const { createLogger, format, transports } = require('winston');
 const { combine, timestamp, printf, errors } = format;
+const DailyRotateFile = require('winston-daily-rotate-file');
 
 // Custom log format
 const logFormat = printf(({ level, message, timestamp, stack }) => {
@@ -10,9 +11,20 @@ const logFormat = printf(({ level, message, timestamp, stack }) => {
 const env = process.env.NODE_ENV || 'production';
 
 // Configure transports (always log to file)
-const loggerTransports = [
-  new transports.File({ filename: 'logs/app.log' }),  // Always log to file
-];
+// const loggerTransports = [
+//   new transports.File({ filename: 'logs/app.log' }),  // Always log to file
+// ];
+
+// Daily rotation transport configuration
+const rotateTransport = new DailyRotateFile({
+  filename: 'logs/app-%DATE%.log', // Log file naming with date
+  datePattern: 'YYYY-MM-DD', // Rotate daily
+  maxSize: '20m', // Max size of each log file (e.g., 20MB)
+  maxFiles: '14d', // Keep logs for 14 days
+  zippedArchive: true, // Compress older logs
+});
+
+const loggerTransports = [rotateTransport]; // Always log to file
 
 // Add console logging only in development
 if (env === 'development') {
