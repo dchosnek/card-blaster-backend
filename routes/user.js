@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const logger = require('../logger');
 
 // ENDPOINT (API): Get user status (isAuthenticated, avatar, nickName)
 router.get('/details', async (req, res) => {
@@ -9,6 +10,7 @@ router.get('/details', async (req, res) => {
 
     // if the session is missing any data, return an empty data structure
     if (!req.session || !req.session.access_token || !req.session.avatar || !req.session.nickName) {
+        logger.info('session missing some information');
         responseBody = {
             avatarUrl: '',
             isAuthenticated: false,
@@ -16,6 +18,7 @@ router.get('/details', async (req, res) => {
         }
         return res.status(200).json(responseBody);
     } else {
+        logger.info(`${req.session.email} retrieved profile info from Mongo successfully`);
         responseBody = {
             avatarUrl: req.session.avatar,
             isAuthenticated: true,
@@ -29,6 +32,7 @@ router.get('/details', async (req, res) => {
 router.get('/history', async (req, res) => {
     try {
         const email = req.session.email;
+        if (!email) { throw new Error('email missing from session database'); }
         const query = { email: email };
         const options = {
             projection: { _id: 0, email: 0 },   // return all but email and _id
@@ -36,10 +40,11 @@ router.get('/history', async (req, res) => {
             limit: 25
         };
         const records = await req.db.find(query, options).toArray();
+        logger.info(`${email} retrieved recent activity from Mongo successfully`);
         return res.status(200).json(records);
 
     } catch (error) {
-        console.error('Failure querying the database:', error);
+        logger.error(`failed to retrieve recent activity from Mongo: ${error.message}`);
         return res.status(200).json([]);
     }
 });
@@ -61,12 +66,13 @@ router.get('/rooms', async (req, res) => {
             },
         });
 
-        const rooms = roomsResponse.data.items;
+        const rooms = roomsResponse.data?.items ?? [];
         const filteredRooms = rooms.map(({ id, title, type }) => ({ id, title, type }));
 
         return res.status(200).json(filteredRooms);
     } catch (error) {
-        console.error('Error fetching rooms:', error.response ? error.response.data : error.message);
+        const errorMessage = error.response ? JSON.stringify(error.response.data) : error.message;
+        logger.error(`failed to get list of rooms: ${errorMessage}`);
         return res.status(200).json([])
     }
 });

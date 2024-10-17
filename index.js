@@ -4,6 +4,7 @@ const session = require('express-session'); // session middleware
 const MongoStore = require('connect-mongo');
 const { MongoClient } = require('mongodb');  // native MongoDB client
 require('dotenv').config();
+const logger = require('./logger');   // import this after reading .env
 
 // Import route files
 const authRoutes = require('./routes/auth');
@@ -20,7 +21,7 @@ const mongoUrl = 'mongodb://localhost:27017';
 
 MongoClient.connect(mongoUrl)
   .then((client) => {
-    console.log('Connected to MongoDB');
+    logger.info('Connected to MongoDB');
 
     const activityCollection = client.db('activity-db').collection('activity');
 
@@ -66,11 +67,11 @@ MongoClient.connect(mongoUrl)
 
 
     app.listen(port, () => {
-      console.log(`Server is running on http://localhost:${port}`);
+      logger.info(`Server is running on http://localhost:${port}`)
     });
 
   })
   .catch((err) => {
-    console.error('Failed to connect to MongoDB: ', err);
+    logger.error('Failed to connect to MongoDB: ', err);
     process.exit(1);
   });
