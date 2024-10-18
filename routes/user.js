@@ -10,7 +10,8 @@ router.get('/details', async (req, res) => {
 
     // if the session is missing any data, return an empty data structure
     if (!req.session || !req.session.access_token || !req.session.avatar || !req.session.nickName) {
-        logger.info('session missing some information');
+        logger.info('/details: session cookie missing some information');
+        logger.info(JSON.stringify(req.session));
         responseBody = {
             avatarUrl: '',
             isAuthenticated: false,
@@ -18,7 +19,7 @@ router.get('/details', async (req, res) => {
         }
         return res.status(200).json(responseBody);
     } else {
-        logger.info(`${req.session.email} retrieved profile info from Mongo successfully`);
+        logger.info(`/details: ${req.session.email} retrieved profile info from Mongo successfully`);
         responseBody = {
             avatarUrl: req.session.avatar,
             isAuthenticated: true,
@@ -40,11 +41,11 @@ router.get('/history', async (req, res) => {
             limit: 25
         };
         const records = await req.db.find(query, options).toArray();
-        logger.info(`${email} retrieved recent activity from Mongo successfully`);
+        logger.info(`/history: ${email} retrieved recent activity from Mongo successfully`);
         return res.status(200).json(records);
 
     } catch (error) {
-        logger.error(`failed to retrieve recent activity from Mongo: ${error.message}`);
+        logger.error(`/history: failed to retrieve recent activity from Mongo: ${error.message}`);
         return res.status(200).json([]);
     }
 });
@@ -69,11 +70,11 @@ router.get('/rooms', async (req, res) => {
 
         const rooms = roomsResponse.data?.items ?? [];
         const filteredRooms = rooms.map(({ id, title, type }) => ({ id, title, type }));
-        logger.info(`${email} retrieved list of ${rooms.length} rooms`);
+        logger.info(`/rooms: ${email} retrieved list of ${rooms.length} rooms`);
         return res.status(200).json(filteredRooms);
     } catch (error) {
         const errorMessage = error.response ? JSON.stringify(error.response.data) : error.message;
-        logger.error(`${email} failed to get list of rooms: ${errorMessage}`);
+        logger.error(`/rooms: ${email} failed to get list of rooms: ${errorMessage}`);
         return res.status(200).json([])
     }
 });

@@ -17,7 +17,7 @@ router.get('/login', (req, res) => {
     const scopes = 'spark:messages_write spark:people_read spark:rooms_read';
     const authUrl = `https://webexapis.com/v1/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=${encodeURIComponent(scopes)}&state=${STATE_STRING}`;
 
-    logger.verbose(`redirecting to ${authUrl}`);
+    logger.verbose(`/login: redirecting to ${authUrl}`);
     res.redirect(authUrl);
 });
 
@@ -49,7 +49,7 @@ router.get('/callback', async (req, res) => {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
         });
-        logger.info('obtained access token for session in callback');
+        logger.info('/callback: obtained access token for the session');
 
         // save the access token in the session
         req.session.access_token = tokenResponse.data.access_token;
@@ -62,7 +62,7 @@ router.get('/callback', async (req, res) => {
         });
 
         const email = profileResponse.data.emails[0]
-        logger.info(`${email} retrieved profile info from Webex successfully`);
+        logger.info(`/callback: ${email} retrieved profile info from Webex successfully`);
 
         // confirm this user belongs to an approved domain
         if (!approvedDomains.some(domain => email.endsWith(domain))) {
@@ -86,7 +86,7 @@ router.get('/callback', async (req, res) => {
     } catch (error) {
         // handle errors from axios or from the thown (simple) errors
         const errorMessage = error.response ? JSON.stringify(error.response.data) : error.message;
-        logger.error(`failed to exchange code for access token in callback: ${errorMessage}`);
+        logger.error(`/callback: failed to exchange code for access token: ${errorMessage}`);
         res.send('An error occurred during the OAuth process.');
     }
 });
@@ -107,18 +107,18 @@ router.get('/logout', (req, res) => {
         // Destroy the session in the MongoDB store
         req.session.destroy((err) => {
             if (err) {
-                logger.error('Failed to destroy session:', err);
+                logger.error('/logout: failed to destroy session:', err);
                 return res.status(500).send('Failed to log out. Please try again.');
             }
 
-            logger.info(`${email} logged out`);
+            logger.info(`/logout: ${email} logged out`);
             // Clear the cookie in the response to fully log out the user
             res.clearCookie('connect.sid');
 
             res.redirect(`${frontendUrl}/`);
         });
     } else {
-        logger.warn('No session to log out.');
+        logger.warn('/logout: no session to log out.');
         res.status(400).send('No session to log out.'); // Handle cases where there is no session
     }
 });

@@ -39,6 +39,8 @@ router.post('/', async (req, res) => {
     const accessToken = req.session.access_token;
     const email = req.session.email;
 
+    logger.info(card);
+
     try {
         // attempt to send the card via Webex
         const config = buildHttpPost(accessToken, roomId, card);
@@ -46,7 +48,7 @@ router.post('/', async (req, res) => {
 
         const messageId = response?.data?.id ?? null;
         if (!messageId) {
-            logger.error(`${email} no messageId returned when sending card`);
+            logger.error(`/card: ${email} no messageId returned when sending card`);
         }
 
         // log the successful card send
@@ -59,11 +61,12 @@ router.post('/', async (req, res) => {
             messageId: messageId
         }).then(() => { });
 
+        logger.info(`/card: ${email} sent card successfully`);
         return res.status(200).json(response.data);
 
     } catch (error) {
 
-        // log the successful card send
+        // log the failed card send
         req.db.insertOne({
             email: email,
             activity: 'send card',
@@ -72,7 +75,7 @@ router.post('/', async (req, res) => {
             timestamp: new Date()
         }).then(() => { });
 
-        logger.error(`${email} failed to send card: ${error.message}`);
+        logger.error(`/card: ${email} failed to send card: ${error.message}`);
         return res.status(500).json({ error: error.message });
     }
 });
@@ -101,7 +104,7 @@ router.delete('/:id', async (req, res) => {
             messageId: messageId
         }).then(() => { });
 
-        logger.info(`${email} deleted card successfully`);
+        logger.info(`/card: ${email} deleted card successfully`);
 
         return res.sendStatus(200);     // status of 200 OK
     } catch (error) {
@@ -111,10 +114,11 @@ router.delete('/:id', async (req, res) => {
             email: req.session.email,
             activity: 'delete card',
             success: false,
-            timestamp: new Date()
+            timestamp: new Date(),
+            messageId: messageId
         }).then(() => { });
 
-        logger.error(`${email} failed to delete card ${messageId}`);
+        logger.error(`/card ${email} failed to delete card: ${error.message}: ${messageId}`);
         return res.status(500).json({ error: error.message });
     }
 });
