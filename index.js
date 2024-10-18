@@ -10,6 +10,7 @@ const logger = require('./logger');   // import this after reading .env
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const cardRoutes = require('./routes/card');
+const systemRoutes = require('./routes/system');
 
 const app = express();
 const port = 3000;
@@ -64,6 +65,8 @@ MongoClient.connect(mongoUrl)
     app.use('/api/v1/user', userRoutes);
     // card API (/ for send)
     app.use('/api/v1/card', cardRoutes);
+    // system API (/ for statistics)
+    app.use('/api/v1/system', systemRoutes);
 
 
     app.listen(port, () => {
