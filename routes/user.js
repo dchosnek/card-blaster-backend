@@ -55,10 +55,6 @@ router.get('/rooms', async (req, res) => {
     const accessToken = req.session.access_token;
     const email = req.session?.email ?? "user";
 
-    if (!accessToken) {
-        return res.redirect('/'); // If no token, redirect to home/login
-    }
-
     try {
         // Make a GET request to Webex to retrieve all rooms
         const roomsResponse = await axios.get(
