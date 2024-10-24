@@ -39,7 +39,7 @@ router.post('/', async (req, res) => {
     const accessToken = req.session.access_token;
     const email = req.session.email;
 
-    logger.info(card);
+    logger.info(`/card: ${email} is attempting to send a card to a ${type} space`);
 
     try {
         // attempt to send the card via Webex
