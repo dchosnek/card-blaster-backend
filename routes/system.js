@@ -1,8 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const logger = require('../logger');
 
 // ENDPOINT (API): Return statistics about this platform's usage
 router.get('/', async (req, res) => {
+
+    logger.info('/system: retrieve app usage (no auth required for this endpoint)');
 
     // Mongo aggregation pipeline:
     // 1. Match only records where a card was successfully sent
@@ -34,6 +37,8 @@ router.get('/', async (req, res) => {
 
     // there is only one record
     const result = await cursor.next();
+
+    logger.info(`/system: app usage is ${JSON.stringify(result)}`);
 
     res.json(result);
 });
