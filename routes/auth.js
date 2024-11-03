@@ -9,7 +9,7 @@ const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = process.env.REDIRECT_URI;
 const STATE_STRING = process.env.STATE_STRING;
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4000';
 const approvedDomains = process.env.APPROVED_DOMAINS.split(',');
 
 // ENDPOINT (redirect): Display Webex Oauth page
@@ -81,7 +81,7 @@ router.get('/callback', async (req, res) => {
         req.session.avatar = profileResponse.data.avatar;
         req.session.email = email;
 
-        return res.redirect('http://localhost:4000')
+        return res.redirect(`${frontendUrl}/`);
 
     } catch (error) {
         // handle errors from axios or from the thown (simple) errors
