@@ -17,7 +17,7 @@ router.get('/login', (req, res) => {
     const scopes = 'spark:messages_write spark:people_read spark:rooms_read';
     const authUrl = `https://webexapis.com/v1/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=${encodeURIComponent(scopes)}&state=${STATE_STRING}`;
 
-    logger.verbose(`/login: redirecting to ${authUrl}`);
+    logger.info(`/login: redirecting to ${authUrl}`);
     res.redirect(authUrl);
 });
 
