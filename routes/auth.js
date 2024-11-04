@@ -18,6 +18,7 @@ router.get('/login', (req, res) => {
     const authUrl = `https://webexapis.com/v1/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=${encodeURIComponent(scopes)}&state=${STATE_STRING}`;
 
     logger.info(`/login: redirecting to ${authUrl}`);
+    logger.info(`/login: redirect_uri=${frontendUrl}`);
     res.redirect(authUrl);
 });
 
@@ -81,6 +82,7 @@ router.get('/callback', async (req, res) => {
         req.session.avatar = profileResponse.data.avatar;
         req.session.email = email;
 
+        logger.info(`/callback: redirecting to ${frontendUrl}`);
         return res.redirect(`${frontendUrl}/`);
 
     } catch (error) {
