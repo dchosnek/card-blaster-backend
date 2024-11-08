@@ -5,11 +5,11 @@ const logger = require('../logger');
 
 // used to build the config for axios to make the the API
 // endpoint easier to read
-const buildHttpPost = (accessToken, roomId, card) => {
+const buildHttpPost = (accessToken, roomId, card, fallbackMessage) => {
     // payload
     const data = JSON.stringify({
         roomId: roomId,
-        markdown: "Card could not render",
+        text: fallbackMessage,
         attachments: [
             {
                 contentType: "application/vnd.microsoft.card.adaptive",
@@ -38,12 +38,13 @@ router.post('/', async (req, res) => {
     const { roomId, card, type } = req.body;
     const accessToken = req.session.access_token;
     const email = req.session.email;
+    const message = `Card sent by ${req.session.nickName}`;
 
     logger.info(`/card: ${email} is attempting to send a card to a ${type} space`);
 
     try {
         // attempt to send the card via Webex
-        const config = buildHttpPost(accessToken, roomId, card);
+        const config = buildHttpPost(accessToken, roomId, card, message);
         const response = await axios.request(config);
 
         const messageId = response?.data?.id ?? null;
