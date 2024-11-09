@@ -35,7 +35,7 @@ const buildHttpPost = (accessToken, roomId, card, fallbackMessage) => {
 
 // ENDPOINT (API): Send a card to the requested roomId
 router.post('/', async (req, res) => {
-    const { roomId, card, type } = req.body;
+    const { roomId, roomTitle, card, type } = req.body;
     const accessToken = req.session.access_token;
     const email = req.session.email;
     const message = `Card sent by ${req.session.nickName}`;
@@ -58,6 +58,8 @@ router.post('/', async (req, res) => {
             activity: 'send card',
             success: true,
             type: type,
+            roomId, roomId,
+            roomTitle: roomTitle,
             timestamp: new Date(),
             messageId: messageId
         }).then(() => { });
@@ -73,6 +75,8 @@ router.post('/', async (req, res) => {
             activity: 'send card',
             success: false,
             type: type,
+            roomId,
+            roomTitle: roomTitle,
             timestamp: new Date()
         }).then(() => { });
 
