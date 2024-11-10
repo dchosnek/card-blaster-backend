@@ -100,28 +100,45 @@ router.delete('/:id', async (req, res) => {
             }
         );
 
+        // retrieve roomId and roomTitle from original creation of this message
+        const query = { 
+            $and: [ 
+                {email: email}, 
+                {messageId: messageId}, 
+                {activity: 'send card'} 
+            ]
+        };
+        const document = await req.db.findOne(query).catch(err => {
+            logger.error(`/card/delete: ${email} error finding message ${messageId}: ${err}`);
+            throw err; // rethrow error to catch below
+        });
+
         // log the successful card send
-        req.db.insertOne({
+        await req.db.insertOne({
             email: req.session.email,
             activity: 'delete card',
             success: true,
+            roomId: document.roomId,
+            roomTitle: document.roomTitle,
             timestamp: new Date(),
             messageId: messageId
-        }).then(() => { });
+        });
 
         logger.info(`/card: ${email} deleted card successfully`);
 
         return res.sendStatus(200);     // status of 200 OK
     } catch (error) {
 
-        // log the successful card send
-        req.db.insertOne({
+        // log the failed card send
+        await req.db.insertOne({
             email: req.session.email,
             activity: 'delete card',
             success: false,
+            roomId: document.roomId,
+            roomTitle: document.roomTitle,
             timestamp: new Date(),
             messageId: messageId
-        }).then(() => { });
+        });
 
         logger.error(`/card ${email} failed to delete card: ${error.message}: ${messageId}`);
         return res.status(500).json({ error: error.message });
