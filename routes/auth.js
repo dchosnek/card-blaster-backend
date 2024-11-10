@@ -83,7 +83,7 @@ router.get('/callback', async (req, res) => {
         req.session.email = email;
 
         logger.info(`/callback: redirecting to ${frontendUrl}`);
-        return res.redirect(`${frontendUrl}/`);
+        return res.redirect(`${frontendUrl}`);
 
     } catch (error) {
         // handle errors from axios or from the thown (simple) errors
@@ -117,7 +117,7 @@ router.get('/logout', (req, res) => {
             // Clear the cookie in the response to fully log out the user
             res.clearCookie('connect.sid');
 
-            res.redirect(`${frontendUrl}/`);
+            res.redirect(`${frontendUrl}`);
         });
     } else {
         logger.warn('/logout: no session to log out.');
