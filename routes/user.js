@@ -55,6 +55,8 @@ router.get('/rooms', async (req, res) => {
     const accessToken = req.session.access_token;
     const email = req.session?.email ?? "user";
 
+    logger.info(`/rooms: ${email} attempting to retrieve a list of rooms`);
+
     try {
         // Make a GET request to Webex to retrieve all rooms
         const roomsResponse = await axios.get(
