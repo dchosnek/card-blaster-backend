@@ -89,8 +89,11 @@ router.delete('/:id', async (req, res) => {
     const messageId = req.params.id;
     const accessToken = req.session.access_token;
     const email = req.session?.email ?? "user";
+    let document;
 
     try {
+
+        logger.info(`/card/delete: ${email} is attempting to delete message ${messageId}`);
 
         const response = await axios.delete(`https://webexapis.com/v1/messages/${messageId}`,
             {
@@ -108,7 +111,7 @@ router.delete('/:id', async (req, res) => {
                 {activity: 'send card'} 
             ]
         };
-        const document = await req.db.findOne(query).catch(err => {
+        document = await req.db.findOne(query).catch(err => {
             logger.error(`/card/delete: ${email} error finding message ${messageId}: ${err}`);
             throw err; // rethrow error to catch below
         });
@@ -134,8 +137,8 @@ router.delete('/:id', async (req, res) => {
             email: req.session.email,
             activity: 'delete card',
             success: false,
-            roomId: document.roomId,
-            roomTitle: document.roomTitle,
+            roomId: document?.roomId,
+            roomTitle: document?.roomTitle,
             timestamp: new Date(),
             messageId: messageId
         });
