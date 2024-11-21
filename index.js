@@ -70,6 +70,19 @@ MongoClient.connect(mongoUrl)
     // system API (/ for statistics)
     app.use('/api/v1/system', systemRoutes);
 
+    // Custom error-handling middleware
+    app.use((err, req, res, next) => {
+      logger.error(`Error handling middleware: ${err.message}`);
+      if (err.type === 'entity.too.large') {
+        res.status(413).json({
+          error: 'Payload too large. Please reduce the size of your JSON payload.',
+        });
+      } else {
+        res.status(500).json({
+          error: 'An unexpected error occurred',
+        });
+      }
+    });
 
     app.listen(port, () => {
       logger.info(`Server is running on http://localhost:${port}`)
