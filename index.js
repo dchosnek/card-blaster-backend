@@ -47,7 +47,9 @@ MongoClient.connect(mongoUrl)
     // ------------------------------------------------------------------------
     
     // this will help read the body of incoming requests
-    app.use(express.json());
+    // updated the payload size from the default of 100KB to 1MB to support 
+    // cards with images as data URIs, which can get large
+    app.use(express.json({ limit: '1mb' }));
 
     // make the activity db available in all routes
     app.use((req, res, next) => {
