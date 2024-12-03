@@ -33,12 +33,14 @@ router.get('/details', async (req, res) => {
 router.get('/history', async (req, res) => {
     try {
         const email = req.session.email;
+        const limit = parseInt(req.query.max) || 25;
+        
         if (!email) { throw new Error('email missing from session database'); }
         const query = { email: email };
         const options = {
             projection: { _id: 0, email: 0 },   // return all but email and _id
             sort: { timestamp: -1 },
-            limit: 25
+            limit: limit,
         };
         const records = await req.db.find(query, options).toArray();
         logger.info(`/history: ${email} retrieved recent activity from Mongo successfully`);
