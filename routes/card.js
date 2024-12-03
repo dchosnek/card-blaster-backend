@@ -85,6 +85,7 @@ router.post('/', async (req, res) => {
     }
 });
 
+// ENDPOINT (API): Delete the specified message by messageId
 router.delete('/:id', async (req, res) => {
     const messageId = req.params.id;
     const accessToken = req.session.access_token;
@@ -145,6 +146,33 @@ router.delete('/:id', async (req, res) => {
 
         logger.error(`/card ${email} failed to delete card: ${error.message}: ${messageId}`);
         return res.status(500).json({ error: error.message });
+    }
+});
+
+// ENDPOINT (API): Get history of card activity
+router.get('/', async (req, res) => {
+    const email = req.session.email;
+    const limit = parseInt(req.query.max) || 25;
+
+    try {
+        if (!email) { throw new Error('email missing from session database'); }
+        logger.info(`/card: ${email} attempting to get list of recent cards`);
+
+        // build Mongo query for current user whose "activity" includes the word "card"
+        const query = { $and: [{ email: email }, { activity: { $regex: 'card'} }] };
+        const options = {
+            projection: { _id: 0, email: 0 },   // return all but email and _id
+            sort: { timestamp: -1 },
+            limit: limit,
+        };
+        const records = await req.db.find(query, options).toArray();
+
+        logger.info(`/card: ${email} retrieved ${records.length} from Mongo successfully`);
+        return res.status(200).json(records);
+
+    } catch (error) {
+        logger.error(`/card: ${email} failed to retrieve recent card activity from Mongo: ${error.message}`);
+        return res.status(200).json([]);
     }
 });
 
