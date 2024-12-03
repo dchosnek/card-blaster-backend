@@ -5,11 +5,13 @@ const MongoStore = require('connect-mongo');
 const { MongoClient } = require('mongodb');  // native MongoDB client
 require('dotenv').config();
 const logger = require('./logger');   // import this after reading .env
+const multer = require('multer');
 
 // Import route files
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const cardRoutes = require('./routes/card');
+const imageRoutes = require('./routes/images');
 const systemRoutes = require('./routes/system');
 
 const app = express();
@@ -45,7 +47,7 @@ MongoClient.connect(mongoUrl)
     // ========================================================================
     // Middleware
     // ------------------------------------------------------------------------
-    
+
     // this will help read the body of incoming requests
     // updated the payload size from the default of 100KB to 1MB to support 
     // cards with images as data URIs, which can get large
@@ -56,7 +58,7 @@ MongoClient.connect(mongoUrl)
       req.db = activityCollection; // Attach the db object to the request object
       next();
     });
-    
+
     // ========================================================================
     // Routes
     // ------------------------------------------------------------------------
@@ -67,21 +69,39 @@ MongoClient.connect(mongoUrl)
     app.use('/api/v1/user', userRoutes);
     // card API (/ for send)
     app.use('/api/v1/card', cardRoutes);
+    // images API (/ for upload and get list)
+    app.use('/api/v1/images', imageRoutes);
     // system API (/ for statistics)
     app.use('/api/v1/system', systemRoutes);
 
     // Custom error-handling middleware
     app.use((err, req, res, next) => {
       logger.error(`Error handling middleware: ${err.message}`);
+
+      // Handle "Payload too large" errors (e.g., from express.json)
       if (err.type === 'entity.too.large') {
         res.status(413).json({
           error: 'Payload too large. Please reduce the size of your JSON payload.',
         });
-      } else {
-        res.status(500).json({
-          error: 'An unexpected error occurred',
+      }
+
+      // Handle Multer file size errors
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({
+            error: 'File size exceeds the limit. Please upload a smaller file.',
+          });
+        }
+        // Handle other multer-specific errors
+        return res.status(400).json({
+          error: `Multer error: ${err.message}`,
         });
       }
+      // catch-all for unexpected errors
+      res.status(500).json({
+        error: 'An unexpected error occurred',
+      });
+
     });
 
     app.listen(port, () => {
