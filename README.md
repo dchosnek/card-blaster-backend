@@ -42,6 +42,8 @@ This is a simple endpoint that simply creates an entry in the activity database 
 
 This POST endpoint allows a user to send a card.
 
+This GET endpoint returns a list of cards the user has sent or deleted. An optional query parameter named `max` with a default value of 25 controls how many entries are returned.
+
 ### `card/:id`
 
 This DELETE endpoint allows a user to delete the card (message) with the given `messageId`.
@@ -80,3 +82,17 @@ This is an important endpoint that returns the current user's activity history, 
 * logout
 * send card
 * delete card
+
+An optional query parameter named `max` with a default value of 25 controls how many entries are returned.
+
+## Images
+
+### `images/`
+
+This POST endpoint uploads the file sent to an S3 bucket and returns the S3 link to that file. The file is renamed in the process but the original filename is saved to the local database. The file is renamed in S3 to match the MongoDB ObjectId assigned to that database entry.
+
+This GET endpoint retrieves a list of images uploaded by the user. An optional query parameter named `max` with a default value of 25 controls how many entries are returned.
+
+# S3 Bucket
+
+This project requires an S3 bucket for publicly hosting images for the user to use in adaptive cards. The file `s3Bucket.yml` in this repository is a CloudFormation template that creates a public S3 bucket and an IAM user with permission to upload new objects to that bucket.
