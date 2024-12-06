@@ -39,9 +39,6 @@ router.get('/', async (req, res) => {
     const email = req.session.email;
     const limit = parseInt(req.query.max) || 25;
 
-    logger.info(limit);
-    logger.info(req.query);
-
     const query = { $and: [{ email: email }, { activity: 'upload image' }] };
     const options = {
         projection: { _id: 0, email: 0 },   // return all but email and _id
@@ -51,13 +48,15 @@ router.get('/', async (req, res) => {
 
     logger.info(`/images: ${email} is attempting to retrieve a list of all images`);
 
+    // this try/catch will only throw an eror if there is a problem reading the DB
     try {
         const imageList = await req.db.find(query, options).toArray();
         logger.info(`/images: ${email} successfully retrieved list of ${imageList.length} images`);
         return res.status(200).json(imageList);
+
     } catch (error) {
-        logger.error(`/images: ${email} error retrieving list of images: ${error}`);
-        return res.status(400).json(error);
+        logger.error(`/images: GET ${error}`);
+        return res.status(500).json([]);
     }
 });
 
@@ -70,7 +69,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
     try {
         const file = req.file; // Multer stores the file in req.file
         if (!file) {
-            return res.status(400).json({ error: 'No file uploaded.' });
+            return res.status(400).json({ message: 'No file uploaded.' });
         }
 
         logger.info(`/images: ${email} image "${file.originalname}" is ${calculateSize(file.size)}`);
@@ -105,7 +104,7 @@ router.post('/', upload.single('photo'), async (req, res) => {
         res.status(200).json({ fileUrl: link });
     } catch (error) {
         console.error('Error uploading to S3:', error);
-        res.status(500).json({ error: 'Failed to upload file.' });
+        res.status(500).json({ message: 'Failed to upload file.' });
     }
 });
 
