@@ -35,7 +35,7 @@ router.get('/history', async (req, res) => {
         const email = req.session.email;
         const limit = parseInt(req.query.max) || 25;
         
-        if (!email) { throw new Error('email missing from session database'); }
+        // build the MongoDB query to return ALL activity for the user
         const query = { email: email };
         const options = {
             projection: { _id: 0, email: 0 },   // return all but email and _id
@@ -48,7 +48,7 @@ router.get('/history', async (req, res) => {
 
     } catch (error) {
         logger.error(`/history: failed to retrieve recent activity from Mongo: ${error.message}`);
-        return res.status(200).json([]);
+        return res.status(500).json({ message: error.message });
     }
 });
 
