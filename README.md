@@ -10,6 +10,30 @@ Session data includes the client session ID and a few basic things about the cli
 
 Activity data is stored persistently. This allows the user to see what cards they've sent and allows the application itself to track how many unique users have utilized this application (and how many cards they've sent).
 
+# Environment variables
+
+A file named `.env` is required in this project with all of the project's secrets. It is not included in this repository for obvious reasons. Below is the format of the file with all of the required secret keys and values ommitted.
+
+```
+CLIENT_ID=
+CLIENT_SECRET=
+APPROVED_DOMAINS=cisco.com
+STATE_STRING=
+COOKIE_SECRET=
+FRONTEND_URL=
+REDIRECT_URI=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=
+```
+
+This line of code imports these values as environment variables.
+
+```javascript
+require('dotenv').config();
+```
+
 # Endpoints
 
 This is the backend, so it's primary purpose is to implement API endpoints that the frontend will access.
