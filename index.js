@@ -6,6 +6,7 @@ const { MongoClient } = require('mongodb');  // native MongoDB client
 require('dotenv').config();
 const logger = require('./logger');   // import this after reading .env
 const multer = require('multer');
+const requireAuthentication = require('./middleware/requireAuthentication');
 
 // Import route files
 const authRoutes = require('./routes/auth');
@@ -66,11 +67,11 @@ MongoClient.connect(mongoUrl)
     // authentication (login, logout, callback)
     app.use('/auth', authRoutes);
     // user API (details, rooms, history)
-    app.use('/api/v1/user', userRoutes);
+    app.use('/api/v1/user', requireAuthentication, userRoutes);
     // card API (/ for send)
-    app.use('/api/v1/card', cardRoutes);
+    app.use('/api/v1/card', requireAuthentication, cardRoutes);
     // images API (/ for upload and get list)
-    app.use('/api/v1/images', imageRoutes);
+    app.use('/api/v1/images', requireAuthentication, imageRoutes);
     // system API (/ for statistics)
     app.use('/api/v1/system', systemRoutes);
 

@@ -81,7 +81,7 @@ router.post('/', async (req, res) => {
         }).then(() => { });
 
         logger.error(`/card: ${email} failed to send card: ${error.message}`);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ message: error.message });
     }
 });
 
@@ -91,11 +91,10 @@ router.delete('/:id', async (req, res) => {
     const accessToken = req.session.access_token;
     const email = req.session?.email ?? "user";
     let document;
+    
+    logger.info(`/card/delete: ${email} is attempting to delete message ${messageId}`);
 
     try {
-
-        logger.info(`/card/delete: ${email} is attempting to delete message ${messageId}`);
-
         const response = await axios.delete(`https://webexapis.com/v1/messages/${messageId}`,
             {
                 headers: {
@@ -145,7 +144,7 @@ router.delete('/:id', async (req, res) => {
         });
 
         logger.error(`/card ${email} failed to delete card: ${error.message}: ${messageId}`);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ message: error.message });
     }
 });
 
@@ -154,25 +153,25 @@ router.get('/', async (req, res) => {
     const email = req.session.email;
     const limit = parseInt(req.query.max) || 25;
 
+    // build Mongo query for current user whose "activity" includes the word "card"
+    const query = { $and: [{ email: email }, { activity: { $regex: 'card'} }] };
+    const options = {
+        projection: { _id: 0, email: 0 },   // return all but email and _id
+        sort: { timestamp: -1 },
+        limit: limit,
+    };
+
+    logger.info(`/card: ${email} attempting to get list of recent cards`);
+
+    // this try/catch will only throw an eror if there is a problem reading the DB
     try {
-        if (!email) { throw new Error('email missing from session database'); }
-        logger.info(`/card: ${email} attempting to get list of recent cards`);
-
-        // build Mongo query for current user whose "activity" includes the word "card"
-        const query = { $and: [{ email: email }, { activity: { $regex: 'card'} }] };
-        const options = {
-            projection: { _id: 0, email: 0 },   // return all but email and _id
-            sort: { timestamp: -1 },
-            limit: limit,
-        };
         const records = await req.db.find(query, options).toArray();
-
         logger.info(`/card: ${email} retrieved ${records.length} from Mongo successfully`);
         return res.status(200).json(records);
 
     } catch (error) {
-        logger.error(`/card: ${email} failed to retrieve recent card activity from Mongo: ${error.message}`);
-        return res.status(200).json([]);
+        logger.error(`/card: GET ${error}`);
+        return res.status(500).json([]);
     }
 });
 
