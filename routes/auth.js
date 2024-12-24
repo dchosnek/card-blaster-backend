@@ -12,6 +12,28 @@ const STATE_STRING = process.env.STATE_STRING;
 const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4000';
 const approvedDomains = process.env.APPROVED_DOMAINS.split(',');
 
+const getMyDetails = async (token) => {
+    try {
+        // Make a request to Webex API to get the user profile
+        const profileResponse = await axios.get('https://webexapis.com/v1/people/me', {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        return {
+            email: profileResponse.data.emails[0],
+            nickName: profileResponse.data.nickName,
+            avatar: profileResponse.data.avatar,
+        }
+    } catch (error) {
+        return {
+            email: null,
+            nickName: null,
+            avatar: null,
+        }
+    }
+};
+
 // ENDPOINT (redirect): Display Webex Oauth page
 router.get('/login', (req, res) => {
     const scopes = 'spark:messages_write spark:people_read spark:rooms_read';
@@ -56,13 +78,9 @@ router.get('/callback', async (req, res) => {
         req.session.access_token = tokenResponse.data.access_token;
 
         // Make a request to Webex API to get the user profile
-        const profileResponse = await axios.get('https://webexapis.com/v1/people/me', {
-            headers: {
-                Authorization: `Bearer ${tokenResponse.data.access_token}`,
-            },
-        });
+        const profileResponse = await getMyDetails(tokenResponse.data.access_token);
 
-        const email = profileResponse.data.emails[0]
+        const email = profileResponse.email;
         logger.info(`/callback: ${email} retrieved profile info from Webex successfully`);
 
         // confirm this user belongs to an approved domain
@@ -78,9 +96,10 @@ router.get('/callback', async (req, res) => {
         }).then(() => { });
 
         // save some user data into the session
-        req.session.nickName = profileResponse.data.nickName;
-        req.session.avatar = profileResponse.data.avatar;
+        req.session.nickName = profileResponse.nickName;
+        req.session.avatar = profileResponse.avatar;
         req.session.email = email;
+        req.session.bot = false;
 
         logger.info(`/callback: redirecting to ${frontendUrl}`);
         return res.redirect(`${frontendUrl}`);
@@ -91,6 +110,49 @@ router.get('/callback', async (req, res) => {
         logger.error(`/callback: failed to exchange code for access token: ${errorMessage}`);
         res.send('An error occurred during the OAuth process.');
     }
+});
+
+// ENDPOINT: similar to /callback but access token is provided as request parameter
+router.get('/bot/:token', async (req, res) => {
+    const accessToken = req.params.token;
+    const email = req.session.email;
+
+    logger.info(`/bot: ${email} is attempting to invoke bot mode`);
+
+    // Make a request to Webex API to get the user profile
+    const profile = await getMyDetails(accessToken);
+
+    if (profile.email === null) {
+        console.error(`/bot: ${email} failed to switch to bot mode; could not retrieve bot details`)
+        return res.status(400).json({
+            message: 'Invalid or expired bot token.',
+          });
+    }
+    
+    // save the login event to the database in a non-blocking manner
+    req.db.insertOne({
+        email: profile.email,
+        activity: 'login',
+        timestamp: new Date()
+    }).then(() => { });
+
+    // save the access token in the session
+    req.session.access_token = accessToken;
+    // save some user data into the session
+    req.session.nickName = profile.nickName;
+    req.session.avatar = profile.avatar;
+    req.session.email = profile.email;
+    req.session.bot = true;
+
+    logger.info(`/bot: ${email} is now in bot mode as ${profile.email}`);
+    
+    return res.status(200).json({
+        avatarUrl: profile.avatar,
+        isAuthenticated: true,
+        nickName: profile.nickName,
+        isBot: true,
+    });
+
 });
 
 // ENDPOINT (redirect): Logout of the application
