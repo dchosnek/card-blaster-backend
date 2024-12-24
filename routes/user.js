@@ -15,7 +15,8 @@ router.get('/details', async (req, res) => {
         responseBody = {
             avatarUrl: '',
             isAuthenticated: false,
-            nickName: ''
+            nickName: '',
+            isBot: false,
         }
         return res.status(200).json(responseBody);
     } else {
@@ -23,7 +24,8 @@ router.get('/details', async (req, res) => {
         responseBody = {
             avatarUrl: req.session.avatar,
             isAuthenticated: true,
-            nickName: req.session.nickName
+            nickName: req.session.nickName,
+            isBot: req.session.bot,
         }
         return res.status(200).json(responseBody);
     }
