@@ -58,24 +58,56 @@ router.get('/history', async (req, res) => {
 router.get('/rooms', async (req, res) => {
     const accessToken = req.session.access_token;
     const email = req.session?.email ?? "user";
+    const limit = parseInt(req.query.max) || 500;
+
+    // retrieving a list of rooms from Webex sometimes returns a 502 Bad Gateway,
+    // so I had to implement logic for a single retry (it always succeeds on the
+    // second attempt)
+
+    // this function could get called twice if the first attempt to get the data
+    // from Webex is unsuccessful
+    const fetchRooms = async () => {
+        try {
+            // Make a GET request to Webex to retrieve all rooms
+            const roomsResponse = await axios.get(
+                `https://webexapis.com/v1/rooms?max=${limit}&sortBy=lastactivity`, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            });
+        
+
+            const rooms = roomsResponse.data?.items ?? [];
+            const filteredRooms = rooms.map(({ id, title, type }) => ({ id, title, type }));
+            logger.info(`/rooms: ${email} received status code of ${roomsResponse.status} from Webex`);
+            return { success: true, data: filteredRooms };
+        } catch (error) {
+            logger.warn(`/rooms: ${email} received status code of ${error.response.status} from Webex`);
+            return { success: false, error };
+        }
+    }
 
     logger.info(`/rooms: ${email} attempting to retrieve a list of rooms`);
 
-    try {
-        // Make a GET request to Webex to retrieve all rooms
-        const roomsResponse = await axios.get(
-            'https://webexapis.com/v1/rooms?max=500&sortBy=lastactivity', {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-        });
+    // this do while loop will call fetchRooms() once if it returns 200 and a
+    // max of twice if the first call fails for any reason
+    let attempt = 0;
+    let response;
+    do {
+        attempt++;
+        response = await fetchRooms();
 
-        const rooms = roomsResponse.data?.items ?? [];
-        const filteredRooms = rooms.map(({ id, title, type }) => ({ id, title, type }));
-        logger.info(`/rooms: ${email} retrieved list of ${rooms.length} rooms`);
-        return res.status(200).json(filteredRooms);
-    } catch (error) {
-        const errorMessage = error.response ? JSON.stringify(error.response.data) : error.message;
+        if (response.success) break;
+
+    } while (attempt < 2);
+
+    if (response.success) {
+        logger.info(`/rooms: ${email} retrieved list of ${response.data.length} rooms`);
+        return res.status(200).json(response.data);
+    } else {
+        const errorMessage = response.error.response
+            ? JSON.stringify(response.error.response.data)
+            : response.error.message;
         logger.error(`/rooms: ${email} failed to get list of rooms: ${errorMessage}`);
         return res.status(200).json([])
     }
