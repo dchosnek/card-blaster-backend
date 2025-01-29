@@ -88,13 +88,6 @@ router.get('/callback', async (req, res) => {
             throw new Error(`${email} is not part of an approved domain for this app`);
         }
 
-        // save the login event to the database in a non-blocking manner
-        req.db.insertOne({
-            email: email,
-            activity: 'login',
-            timestamp: new Date()
-        }).then(() => { });
-
         // save some user data into the session
         req.session.nickName = profileResponse.nickName;
         req.session.avatar = profileResponse.avatar;
@@ -128,13 +121,6 @@ router.get('/bot/:token', async (req, res) => {
             message: 'Invalid or expired bot token.',
           });
     }
-    
-    // save the login event to the database in a non-blocking manner
-    req.db.insertOne({
-        email: profile.email,
-        activity: 'login',
-        timestamp: new Date()
-    }).then(() => { });
 
     // save the access token in the session
     req.session.access_token = accessToken;
@@ -160,13 +146,8 @@ router.get('/logout', (req, res) => {
     // Check if the session exists
     if (req.session) {
 
-        // log the logout event
+        // fetch email for logging purposes
         const email = req.session.email;
-        req.db.insertOne({
-            email: email,
-            activity: 'logout',
-            timestamp: new Date()
-        }).then(() => { });
 
         // Destroy the session in the MongoDB store
         req.session.destroy((err) => {
