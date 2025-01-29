@@ -109,6 +109,12 @@ This is an important endpoint that returns the current user's activity history, 
 
 An optional query parameter named `max` with a default value of 25 controls how many entries are returned.
 
+### `user/rooms`
+
+Returns a number of Webex spaces (rooms) that the user is a member of in order of `lastactivity`.
+
+An optional query parameter named `max` with a default value of 500 controls how many entries are returned.
+
 ## Images
 
 ### `images/`
