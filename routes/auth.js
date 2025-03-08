@@ -20,10 +20,18 @@ const getMyDetails = async (token) => {
                 Authorization: `Bearer ${token}`,
             },
         });
+
+        // build an avatar using the user's initials in the event the user does
+        // not have an avatar in Webex
+        const externalAvatar = 'https://ui-avatars.com/api/?background=0D8ABC&color=fff&name='
+            + profileResponse.data.nickName.charAt(0)
+            + profileResponse.data.lastName.charAt(0);
+        const webexAvatar = profileResponse.data.avatar;
+
         return {
             email: profileResponse.data.emails[0],
             nickName: profileResponse.data.nickName,
-            avatar: profileResponse.data.avatar,
+            avatar: webexAvatar ? webexAvatar : externalAvatar,
         }
     } catch (error) {
         return {
