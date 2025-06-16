@@ -13,6 +13,9 @@ const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4000';
 const approvedDomains = process.env.APPROVED_DOMAINS.split(',');
 
 const getMyDetails = async (token) => {
+
+    logger.info('getMyDetails: attempting to retrieve user details from Webex /people/me');
+
     try {
         // Make a request to Webex API to get the user profile
         const profileResponse = await axios.get('https://webexapis.com/v1/people/me', {
@@ -23,10 +26,16 @@ const getMyDetails = async (token) => {
 
         // build an avatar using the user's initials in the event the user does
         // not have an avatar in Webex
+        const nickInitial = profileResponse.data.nickName?.charAt(0) ?? '';
+        const lastInitial = profileResponse.data.lastName?.charAt(0) ?? '';
         const externalAvatar = 'https://ui-avatars.com/api/?background=0D8ABC&color=fff&name='
-            + profileResponse.data.nickName.charAt(0)
-            + profileResponse.data.lastName.charAt(0);
+            + nickInitial + lastInitial;
+        logger.info(`getMyDetails: backup avatar: ${externalAvatar}`);
+
+        // avatar from the Webex API (provided the user has one... might be undefined)
         const webexAvatar = profileResponse.data.avatar;
+
+        logger.info('getMyDetails: successfully retrieved user details from Webex /people/me');
 
         return {
             email: profileResponse.data.emails[0],
@@ -34,6 +43,7 @@ const getMyDetails = async (token) => {
             avatar: webexAvatar ? webexAvatar : externalAvatar,
         }
     } catch (error) {
+        logger.error(`getMyDetails: failed to retrieve user details from Webex /people/me: ${error.message}`);
         return {
             email: null,
             nickName: null,
@@ -124,7 +134,7 @@ router.get('/bot/:token', async (req, res) => {
     const profile = await getMyDetails(accessToken);
 
     if (profile.email === null) {
-        console.error(`/bot: ${email} failed to switch to bot mode; could not retrieve bot details`)
+        logger.error(`/bot: ${email} failed to switch to bot mode; could not retrieve bot details`)
         return res.status(400).json({
             message: 'Invalid or expired bot token.',
           });
