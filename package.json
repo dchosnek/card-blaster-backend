@@ -11,13 +11,14 @@
   "license": "ISC",
   "dependencies": {
     "aws-sdk": "^2.1692.0",
-    "axios": "^1.7.7",
+    "axios": "^1.11.0",
     "connect-mongo": "^5.1.0",
-    "cookie-session": "^2.1.0",
+    "cookie-session": "^2.1.1",
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
+    "express-session": "^1.18.2",
     "mongodb": "^6.9.0",
-    "multer": "^1.4.5-lts.1",
+    "multer": ">=2.0.2",
     "qs": "^6.13.0",
     "winston": "^3.15.0",
     "winston-daily-rotate-file": "^5.0.0"
