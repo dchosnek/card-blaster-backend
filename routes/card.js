@@ -80,8 +80,14 @@ router.post('/', async (req, res) => {
             timestamp: new Date()
         }).then(() => { });
 
-        logger.error(`/card: ${email} failed to send card: ${error.message}`);
-        return res.status(500).json({ message: error.message });
+        // return the most detailed error message if available
+        let errorMessage = error.message;
+        if(error.response?.data?.message) {
+            errorMessage = `(${error.response?.status}) ${error.response.data.message}`
+        }
+
+        logger.error(`/card: ${email} failed to send card: ${errorMessage}`);
+        return res.status(500).json({ message: errorMessage });
     }
 });
 
@@ -143,8 +149,14 @@ router.delete('/:id', async (req, res) => {
             messageId: messageId
         });
 
-        logger.error(`/card ${email} failed to delete card: ${error.message}: ${messageId}`);
-        return res.status(500).json({ message: error.message });
+        // return the most detailed error message if available
+        let errorMessage = error.message;
+        if(error.response?.data?.message) {
+            errorMessage = `(${error.response?.status}) ${error.response.data.message}`
+        }
+
+        logger.error(`/card ${email} failed to delete card: ${errorMessage}: ${messageId}`);
+        return res.status(500).json({ message: errorMessage });
     }
 });
 
