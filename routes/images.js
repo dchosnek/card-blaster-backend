@@ -2,14 +2,16 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const multer = require('multer');
-const AWS = require('aws-sdk');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { ObjectId } = require('mongodb');
 const logger = require('../logger');
 
 // Configure AWS S3
-const s3 = new AWS.S3({
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID, // Set your AWS access key ID
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY, // Set your AWS secret access key
+const s3 = new S3Client({
+    credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID, // Set your AWS access key ID
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY, // Set your AWS secret access key
+    },
     region: process.env.AWS_REGION, // Set your region
   });
 
@@ -85,8 +87,8 @@ router.post('/', upload.single('photo'), async (req, res) => {
             Body: file.buffer,          // File data from multer
             ContentType: file.mimetype, // File MIME type
         };
-        const s3Response = await s3.upload(params).promise();
-        const link = s3Response.Location;
+        await s3.send(new PutObjectCommand(params));
+        const link = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${encodeURIComponent(newFilename)}`;
 
         // log the attempted image upload so we can get an ObjectId
         await req.db.insertOne({

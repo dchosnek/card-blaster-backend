@@ -11,7 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "aws-sdk": "^2.1692.0",
+    "@aws-sdk/client-s3": "^3.796.0",
     "axios": "^1.11.0",
     "connect-mongo": "^5.1.0",
     "cookie-session": "^2.1.1",
