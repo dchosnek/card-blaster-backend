@@ -10,6 +10,12 @@ Session data includes the client session ID and a few basic things about the cli
 
 Activity data is stored persistently. This allows the user to see what cards they've sent and allows the application itself to track how many unique users have utilized this application (and how many cards they've sent).
 
+For local development, spin up an empty database with this command:
+
+```
+docker run -d --name some-mongo -p 27017:27017 mongo:latest
+```
+
 # Environment variables
 
 A file named `.env` is required in this project with all of the project's secrets. It is not included in this repository for obvious reasons. Below is the format of the file with all of the required secret keys and values ommitted.
@@ -122,6 +128,10 @@ An optional query parameter named `max` with a default value of 500 controls how
 This POST endpoint uploads the file sent to an S3 bucket and returns the S3 link to that file. The file is renamed in the process but the original filename is saved to the local database. The file is renamed in S3 to match the MongoDB ObjectId assigned to that database entry.
 
 This GET endpoint retrieves a list of images uploaded by the user. An optional query parameter named `max` with a default value of 25 controls how many entries are returned.
+
+### `images/:id`
+
+This DELETE endpoint removes the image upload record with the specified MongoDB `_id` for the current user and also deletes the corresponding object from S3.
 
 # S3 Bucket
 

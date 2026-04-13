@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const multer = require('multer');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { ObjectId } = require('mongodb');
 const logger = require('../logger');
 
@@ -36,6 +36,11 @@ const calculateSize = (bytes) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + sizes[i];
 };
 
+const getS3KeyFromLink = (link) => {
+    const { pathname } = new URL(link);
+    return decodeURIComponent(pathname.replace(/^\/+/, ''));
+};
+
 // GET route to handle retrieving file list
 router.get('/', async (req, res) => {
     const email = req.session.email;
@@ -59,6 +64,46 @@ router.get('/', async (req, res) => {
     } catch (error) {
         logger.error(`/images: GET ${error}`);
         return res.status(500).json([]);
+    }
+});
+
+// DELETE route to remove an uploaded image record and its S3 object
+router.delete('/:id', async (req, res) => {
+    const email = req.session.email;
+    const { id } = req.params;
+
+    logger.info(`/images: ${email} is attempting to delete image record ${id}`);
+
+    if (!ObjectId.isValid(id)) {
+        logger.warn(`/images: ${email} provided invalid image record id ${id}`);
+        return res.status(400).json({ message: 'Invalid image id.' });
+    }
+
+    try {
+        const imageRecord = await req.db.findOne({
+            _id: new ObjectId(id),
+            email: email,
+            activity: 'upload image',
+        });
+
+        if (!imageRecord) {
+            logger.warn(`/images: ${email} could not find image record ${id} to delete`);
+            return res.status(404).json({ message: 'Image record not found.' });
+        }
+
+        const key = getS3KeyFromLink(imageRecord.link);
+        await s3.send(new DeleteObjectCommand({
+            Bucket: process.env.S3_BUCKET_NAME,
+            Key: key,
+        }));
+
+        await req.db.deleteOne({ _id: imageRecord._id });
+
+        logger.info(`/images: ${email} deleted image record ${id}`);
+        return res.status(200).json({ message: 'Image deleted.' });
+    } catch (error) {
+        logger.error(`/images: DELETE ${error}`);
+        return res.status(500).json({ message: 'Failed to delete image.' });
     }
 });
 
