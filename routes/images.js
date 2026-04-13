@@ -41,36 +41,8 @@ const getS3KeyFromLink = (link) => {
     return decodeURIComponent(pathname.replace(/^\/+/, ''));
 };
 
-// GET route to handle retrieving file list
-router.get('/', async (req, res) => {
+const deleteImage = async (req, res, id) => {
     const email = req.session.email;
-    const limit = parseInt(req.query.max) || 25;
-
-    const query = { $and: [{ email: email }, { activity: 'upload image' }] };
-    const options = {
-        projection: { _id: 0, email: 0 },   // return all but email and _id
-        sort: { timestamp: -1 },
-        limit: limit,
-    };
-
-    logger.info(`/images: ${email} is attempting to retrieve a list of all images`);
-
-    // this try/catch will only throw an eror if there is a problem reading the DB
-    try {
-        const imageList = await req.db.find(query, options).toArray();
-        logger.info(`/images: ${email} successfully retrieved list of ${imageList.length} images`);
-        return res.status(200).json(imageList);
-
-    } catch (error) {
-        logger.error(`/images: GET ${error}`);
-        return res.status(500).json([]);
-    }
-});
-
-// DELETE route to remove an uploaded image record and its S3 object
-router.delete('/:id', async (req, res) => {
-    const email = req.session.email;
-    const { id } = req.params;
 
     logger.info(`/images: ${email} is attempting to delete image record ${id}`);
 
@@ -105,6 +77,43 @@ router.delete('/:id', async (req, res) => {
         logger.error(`/images: DELETE ${error}`);
         return res.status(500).json({ message: 'Failed to delete image.' });
     }
+};
+
+// GET route to handle retrieving file list
+router.get('/', async (req, res) => {
+    const email = req.session.email;
+    const limit = parseInt(req.query.max) || 25;
+
+    const query = { $and: [{ email: email }, { activity: 'upload image' }] };
+    const options = {
+        projection: { _id: 0, email: 0 },   // return all but email and _id
+        sort: { timestamp: -1 },
+        limit: limit,
+    };
+
+    logger.info(`/images: ${email} is attempting to retrieve a list of all images`);
+
+    // this try/catch will only throw an eror if there is a problem reading the DB
+    try {
+        const imageList = await req.db.find(query, options).toArray();
+        logger.info(`/images: ${email} successfully retrieved list of ${imageList.length} images`);
+        return res.status(200).json(imageList);
+
+    } catch (error) {
+        logger.error(`/images: GET ${error}`);
+        return res.status(500).json([]);
+    }
+});
+
+// POST route to delete an uploaded image record and its S3 object
+router.post('/delete', async (req, res) => {
+    const { id } = req.body;
+
+    if (!id) {
+        return res.status(400).json({ message: 'Image id is required.' });
+    }
+
+    return deleteImage(req, res, id);
 });
 
 // POST route to handle file upload

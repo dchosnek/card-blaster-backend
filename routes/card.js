@@ -33,6 +33,73 @@ const buildHttpPost = (accessToken, roomId, card, fallbackMessage) => {
     return config;
 }
 
+const deleteCard = async (req, res, messageId) => {
+    const accessToken = req.session.access_token;
+    const email = req.session?.email ?? "user";
+    let document;
+
+    logger.info(`/card/delete: ${email} is attempting to delete message ${messageId}`);
+
+    try {
+        await axios.delete(`https://webexapis.com/v1/messages/${messageId}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                }
+            }
+        );
+
+        // retrieve roomId and roomTitle from original creation of this message
+        const query = {
+            $and: [
+                { email: email },
+                { messageId: messageId },
+                { activity: 'send card' }
+            ]
+        };
+        document = await req.db.findOne(query).catch(err => {
+            logger.error(`/card/delete: ${email} error finding message ${messageId}: ${err}`);
+            throw err; // rethrow error to catch below
+        });
+
+        // log the successful card send
+        await req.db.insertOne({
+            email: req.session.email,
+            activity: 'delete card',
+            success: true,
+            roomId: document.roomId,
+            roomTitle: document.roomTitle,
+            timestamp: new Date(),
+            messageId: messageId
+        });
+
+        logger.info(`/card: ${email} deleted card successfully`);
+
+        return res.sendStatus(200);     // status of 200 OK
+    } catch (error) {
+
+        // log the failed card send
+        await req.db.insertOne({
+            email: req.session.email,
+            activity: 'delete card',
+            success: false,
+            roomId: document?.roomId,
+            roomTitle: document?.roomTitle,
+            timestamp: new Date(),
+            messageId: messageId
+        });
+
+        // return the most detailed error message if available
+        let errorMessage = error.message;
+        if(error.response?.data?.message) {
+            errorMessage = `(${error.response?.status}) ${error.response.data.message}`
+        }
+
+        logger.error(`/card ${email} failed to delete card: ${errorMessage}: ${messageId}`);
+        return res.status(500).json({ message: errorMessage });
+    }
+};
+
 // ENDPOINT (API): Send a card to the requested roomId
 router.post('/', async (req, res) => {
     const { roomId, roomTitle, card, type } = req.body;
@@ -91,73 +158,15 @@ router.post('/', async (req, res) => {
     }
 });
 
-// ENDPOINT (API): Delete the specified message by messageId
-router.delete('/:id', async (req, res) => {
-    const messageId = req.params.id;
-    const accessToken = req.session.access_token;
-    const email = req.session?.email ?? "user";
-    let document;
-    
-    logger.info(`/card/delete: ${email} is attempting to delete message ${messageId}`);
+// ENDPOINT (API): Delete the specified message by messageId from request body
+router.post('/delete', async (req, res) => {
+    const { id: messageId } = req.body;
 
-    try {
-        const response = await axios.delete(`https://webexapis.com/v1/messages/${messageId}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${accessToken}`
-                }
-            }
-        );
-
-        // retrieve roomId and roomTitle from original creation of this message
-        const query = { 
-            $and: [ 
-                {email: email}, 
-                {messageId: messageId}, 
-                {activity: 'send card'} 
-            ]
-        };
-        document = await req.db.findOne(query).catch(err => {
-            logger.error(`/card/delete: ${email} error finding message ${messageId}: ${err}`);
-            throw err; // rethrow error to catch below
-        });
-
-        // log the successful card send
-        await req.db.insertOne({
-            email: req.session.email,
-            activity: 'delete card',
-            success: true,
-            roomId: document.roomId,
-            roomTitle: document.roomTitle,
-            timestamp: new Date(),
-            messageId: messageId
-        });
-
-        logger.info(`/card: ${email} deleted card successfully`);
-
-        return res.sendStatus(200);     // status of 200 OK
-    } catch (error) {
-
-        // log the failed card send
-        await req.db.insertOne({
-            email: req.session.email,
-            activity: 'delete card',
-            success: false,
-            roomId: document?.roomId,
-            roomTitle: document?.roomTitle,
-            timestamp: new Date(),
-            messageId: messageId
-        });
-
-        // return the most detailed error message if available
-        let errorMessage = error.message;
-        if(error.response?.data?.message) {
-            errorMessage = `(${error.response?.status}) ${error.response.data.message}`
-        }
-
-        logger.error(`/card ${email} failed to delete card: ${errorMessage}: ${messageId}`);
-        return res.status(500).json({ message: errorMessage });
+    if (!messageId) {
+        return res.status(400).json({ message: 'Message id is required.' });
     }
+
+    return deleteCard(req, res, messageId);
 });
 
 // ENDPOINT (API): Get history of card activity

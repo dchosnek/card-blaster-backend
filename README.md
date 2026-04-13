@@ -46,7 +46,7 @@ This is the backend, so it's primary purpose is to implement API endpoints that 
 
 ## Authentication
 
-### `auth/login`
+### `GET /auth/login`
 
 Part of the oauth process, this endpoint is only responsible for redirecting to an authentication page hosted by Webex. This URL includes:
 * Client ID: the id of the Card Blaster Webex integration
@@ -54,7 +54,7 @@ Part of the oauth process, this endpoint is only responsible for redirecting to 
 * Scope: the permissions requested by Card Blaster. These must match the permissions requested when registering Card Blaster as a Webex integration.
 * State: this is just a string that the backend (this code) can verify is returned by Webex during the auth process. This is optional, but the code in this repository does validate this string and throw an error if it does not match.
 
-### `auth/callback`
+### `GET /auth/callback`
 
 The Webex oauth process sends the client to this URL, where the code in this repo will validate the state string and take the token provided by Webex to request a secret token on behalf of the user.
 
@@ -62,25 +62,27 @@ The code in this repo will take the token provided in this callback along with t
 
 The access token obtained in this step is stored in the session database and has a TTL of 8 hours.
 
-### `auth/logout`
+### `GET /auth/logout`
 
 This is a simple endpoint that simply creates an entry in the activity database indicating the user logged out, and removed the user's entry in the session database (which deletes all of their personal data).
 
 ## Card
 
-### `card/`
+### `POST /card/`
 
-This POST endpoint allows a user to send a card.
+This endpoint allows a user to send a card.
 
-This GET endpoint returns a list of cards the user has sent or deleted. An optional query parameter named `max` with a default value of 25 controls how many entries are returned.
+### `GET /card/`
 
-### `card/:id`
+This endpoint returns a list of cards the user has sent or deleted. An optional query parameter named `max` with a default value of 25 controls how many entries are returned.
 
-This DELETE endpoint allows a user to delete the card (message) with the given `messageId`.
+### `POST /card/delete`
+
+This endpoint deletes the specified Webex card message. Provide the `messageId` in the request body as `id`.
 
 ## System
 
-### `system/`
+### `GET /system/`
 
 This endpoint returns the number of unique users and the total number of cards sent. It utilizes data from the activity database. It returns something like the example below.
 
@@ -93,7 +95,7 @@ This endpoint returns the number of unique users and the total number of cards s
 
 ## User
 
-### `user/details`
+### `GET /user/details`
 
 This endpoint returns very basic information about the current user.
 
@@ -105,7 +107,7 @@ This endpoint returns very basic information about the current user.
 }
 ```
 
-### `user/history`
+### `GET /user/history`
 
 This is an important endpoint that returns the current user's activity history, including the following events:
 * login
@@ -115,7 +117,7 @@ This is an important endpoint that returns the current user's activity history, 
 
 An optional query parameter named `max` with a default value of 25 controls how many entries are returned.
 
-### `user/rooms`
+### `GET /user/rooms`
 
 Returns a number of Webex spaces (rooms) that the user is a member of in order of `lastactivity`.
 
@@ -123,15 +125,17 @@ An optional query parameter named `max` with a default value of 500 controls how
 
 ## Images
 
-### `images/`
+### `POST /images/`
 
-This POST endpoint uploads the file sent to an S3 bucket and returns the S3 link to that file. The file is renamed in the process but the original filename is saved to the local database. The file is renamed in S3 to match the MongoDB ObjectId assigned to that database entry.
+This endpoint uploads the file sent to an S3 bucket and returns the S3 link to that file. The file is renamed in the process but the original filename is saved to the local database. The file is renamed in S3 to match the MongoDB ObjectId assigned to that database entry.
 
-This GET endpoint retrieves a list of images uploaded by the user. An optional query parameter named `max` with a default value of 25 controls how many entries are returned.
+### `GET /images/`
 
-### `images/:id`
+This endpoint retrieves a list of images uploaded by the user. An optional query parameter named `max` with a default value of 25 controls how many entries are returned.
 
-This DELETE endpoint removes the image upload record with the specified MongoDB `_id` for the current user and also deletes the corresponding object from S3.
+### `POST /images/delete`
+
+This endpoint removes the image upload record with the specified MongoDB `_id` for the current user and also deletes the corresponding object from S3. Provide the image id in the request body as `id`.
 
 # S3 Bucket
 
