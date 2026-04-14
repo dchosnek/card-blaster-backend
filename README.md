@@ -2,6 +2,8 @@
 
 Node/Express + Mongo stack for performing oauth with Webex and sending a card on a user's behalf. This is just the backend API. The frontend is another repository.
 
+Frontend repository: [card-blaster-frontend](https://github.com/dchosnek/card-blaster-frontend)
+
 # Database
 
 This backed requires a database. It was written to use MongoDB with two databases: one for session data and one for activity data.
