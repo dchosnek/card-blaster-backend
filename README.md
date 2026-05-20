@@ -142,3 +142,12 @@ This endpoint removes the image upload record with the specified MongoDB `_id` f
 # S3 Bucket
 
 This project requires an S3 bucket for publicly hosting images for the user to use in adaptive cards. The file `s3Bucket.yml` in this repository is a CloudFormation template that creates a public S3 bucket and an IAM user with permission to upload new objects to that bucket.
+
+# Local development
+
+This will update the local packages according to what is specified in `package-lock.json` and run the server locally in development mode (log messages will be displayed on screen rather than saved to a log file).
+
+```
+npm ci
+NODE_ENV=development npm run dev
+```
